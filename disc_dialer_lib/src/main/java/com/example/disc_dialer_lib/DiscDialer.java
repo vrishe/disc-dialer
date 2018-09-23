@@ -6,14 +6,17 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PointF;
+import android.graphics.PorterDuff;
 import android.graphics.RectF;
 import android.os.Build;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
+import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import java.util.Objects;
 
 public final class DiscDialer extends View {
 
@@ -25,58 +28,47 @@ public final class DiscDialer extends View {
     void drawDisc(Canvas c, RectF bounds);
 
     void drawForeground(Canvas c, RectF bounds);
+
+    void setClipRect(RectF clipRect);
   }
 
   private static final double RADIAN = Math.PI / 180;
   private static final double RADIAN_INV = 180 / Math.PI;
 
   private static final double DIALER_ROTARY_VELOCITY = 40. / 1000; // degrees per millisecond
-  private static final double DIALER_TILT = RADIAN * 22; // radians
+  private static final double DIALER_TILT = RADIAN * 10.5; // radians
 
   private final Rotor _rotor = new Rotor();
-  private final Renderer _renderer = new Renderer() {
-    private final Paint _paint[] = new Paint[] {
-        makeTestPaint(Color.LTGRAY), makeTestPaint(Color.BLACK), makeTestPaint(Color.YELLOW)
-    };
-
-    @Override public void drawBackground(Canvas c, RectF bounds) {
-      c.drawRect(bounds, _paint[0]);
-    }
-
-    @Override public void drawDisc(Canvas c, RectF bounds) {
-      c.drawRect(bounds, _paint[1]);
-    }
-
-    @Override public void drawForeground(Canvas c, RectF bounds) {
-      c.save();
-      {
-        _paint[2].setStrokeWidth(8);
-        _paint[2].setStyle(Paint.Style.FILL_AND_STROKE);
-
-        c.rotate((float) (RADIAN_INV * DIALER_TILT), bounds.centerX(), bounds.centerY());
-        c.drawLine(bounds.centerX(), bounds.centerY(), bounds.right, bounds.centerY(), _paint[2]);
-        c.drawCircle(bounds.right, bounds.centerY(), 16, _paint[2]);
-      }
-      c.restore();
-    }
-  };
+  private Renderer _renderer;
 
   public DiscDialer(Context context) {
     super(context);
+    init(context, null, 0,0);
   }
 
   public DiscDialer(Context context, @Nullable AttributeSet attrs) {
     super(context, attrs);
+    init(context, attrs, 0,0);
   }
 
   public DiscDialer(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
+    init(context, attrs, defStyleAttr, 0);
   }
 
   @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
   public DiscDialer(Context context, @Nullable AttributeSet attrs, int defStyleAttr,
       int defStyleRes) {
     super(context, attrs, defStyleAttr, defStyleRes);
+    init(context, attrs, defStyleAttr, defStyleRes);
+  }
+
+  private void init(Context context, @Nullable AttributeSet attrs, int defStyleAttr,
+      int defStyleRes) {
+    _renderer = new DrawableRenderer(
+        ContextCompat.getDrawable(context, R.drawable.disc_dialer_bg),
+        ContextCompat.getDrawable(context, R.drawable.disc_dialer_disc),
+        ContextCompat.getDrawable(context, R.drawable.disc_dialer_fg));
   }
 
   private static double arc(PointF center, float ax, float ay, float bx, float by) {
@@ -85,7 +77,8 @@ public final class DiscDialer extends View {
     bx -= center.x;
     by -= center.y;
 
-    final double s = (ax * by - ay * bx) / Math.sqrt((ax * ax + ay * ay) * (bx * bx + by * by));
+    final double s = (ax * by - ay * bx)
+        / Math.sqrt((ax * ax + ay * ay) * (bx * bx + by * by));
 
     return Math.asin(s);
   }
@@ -134,10 +127,12 @@ public final class DiscDialer extends View {
   @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     super.onLayout(changed, left, top, right, bottom);
 
-    float cx = (right - left) * .5f, cy = (bottom - top) * .5f, d = Math.min(cx, cy);
+    int w = right-left, h = bottom-top;
+    float cx = .5f*w, cy = .5f*h, r = Math.min(cx, cy);
 
-    _clipRect.set(cx - d, cy - d, cx + d, cy + d);
-    _rotor.pivot.set(_clipRect.centerX(), _clipRect.centerY());
+    _clipRect.set(cx - r, cy - r, cx + r, cy + r);
+    _rotor.setPivot(_clipRect.centerX(), _clipRect.centerY());
+    _renderer.setClipRect(_clipRect);
   }
 
   @Override @SuppressLint("ClickableViewAccessibility")
@@ -146,7 +141,6 @@ public final class DiscDialer extends View {
   }
 
   private class Rotor {
-    final PointF pivot = new PointF();
     float angle;
 
     private boolean _debounce;
@@ -165,8 +159,13 @@ public final class DiscDialer extends View {
       }
     }
 
+    private final PointF _pivot = new PointF();
     private final PointF _touch = new PointF();
     private double _phi0, _phi1;
+
+    void setPivot(float cx, float cy) {
+      _pivot.set(cx, cy);
+    }
 
     boolean onTouchEvent(MotionEvent event) {
       final int action = event.getAction();
@@ -174,12 +173,12 @@ public final class DiscDialer extends View {
         case MotionEvent.ACTION_DOWN:
           _debounce = false;
           _touch.set(event.getX(), event.getY());
-          _phi0 = azimuth(pivot, event.getX(), event.getY()) - DIALER_TILT;
+          _phi0 = azimuth(_pivot, event.getX(), event.getY()) - DIALER_TILT;
           _phi1 = _phi0;
           return _clipRect.contains(event.getX(), event.getY());
 
         case MotionEvent.ACTION_MOVE:
-          double alpha = arc(pivot, _touch.x, _touch.y, event.getX(), event.getY());
+          double alpha = arc(_pivot, _touch.x, _touch.y, event.getX(), event.getY());
           double phi = _phi0 + alpha;
 
           _touch.set(event.getX(), event.getY());
