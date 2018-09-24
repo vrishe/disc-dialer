@@ -7,8 +7,17 @@
     tools:context=".MainActivity">
 
     <com.example.disc_dialer_lib.DiscDialer
+        android:id="@+id/disc_dialer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@android:color/transparent"/>
+    <TextView
+        android:id="@+id/text_digit_preview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:textColor="@android:color/white"
+        android:textSize="72dp"
+        tools:text="4"/>
 
 </FrameLayout>

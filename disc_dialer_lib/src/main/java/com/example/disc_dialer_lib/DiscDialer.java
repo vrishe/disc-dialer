@@ -3,7 +3,6 @@ package com.example.disc_dialer_lib;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Paint;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.os.Build;
@@ -14,10 +13,16 @@ import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import java.util.ArrayList;
+import java.util.Collection;
 
 public final class DiscDialer extends View {
 
   private static final String TAG = DiscDialer.class.getName();
+
+  public interface InputListener {
+    void onDigitInput(DiscDialer dialer, int digit);
+  }
 
   public interface Renderer {
     void drawBackground(Canvas c, RectF bounds);
@@ -33,14 +38,13 @@ public final class DiscDialer extends View {
   private static final double RADIAN_INV = 180 / Math.PI;
 
   private static class DialerConfig {
-    private static final double DEFAULT_DISC_ROTARY_VELOCITY = 40. / 1000; // degrees per millisecond
-    private static final double DEFAULT_PIN_TILT = RADIAN * 10.5; // radians
-
-    public double discRotaryVelocity = DEFAULT_DISC_ROTARY_VELOCITY;
-    public double pinTilt = DEFAULT_PIN_TILT;
+    public double discAngularVelocity = 40./1000; // degrees per millisecond
+    public double knobAzimuth = 25 * RADIAN; // radians
     public float outerDeadZoneCoeff = 1.f;
     public float innerDeadZoneCoeff = .58103f;
     public float innerDeadZoneGripMult = .16f;
+    public float cockAngleThreshold = 52f; // degrees;
+    public float digitSegmentArc = 28f; // degrees
   }
 
   private DialerConfig _config;
@@ -66,6 +70,15 @@ public final class DiscDialer extends View {
       int defStyleRes) {
     super(context, attrs, defStyleAttr, defStyleRes);
     init(context, attrs, defStyleAttr, defStyleRes);
+  }
+
+  private final Collection<InputListener> _listeners = new ArrayList<>();
+  public void addListener(InputListener listener) {
+    _listeners.add(listener);
+  }
+
+  public void removeListener(InputListener listener) {
+    _listeners.remove(listener);
   }
 
   private void init(Context context, @Nullable AttributeSet attrs, int defStyleAttr,
@@ -151,17 +164,31 @@ public final class DiscDialer extends View {
   private final class Rotor {
     float angle;
 
+    private int _pulsesCount;
+
+    void dispatchPulsesCount() {
+      final int digit = _pulsesCount%10;
+      for (InputListener l: _listeners) {
+        l.onDigitInput(DiscDialer.this, digit);
+      }
+    }
+
     private boolean _debounce;
     private long _t0;
 
     void doAnimationTick() {
       if (_debounce) {
         long dt = getAnimationTime() - _t0;
-        angle -= dt * _config.discRotaryVelocity;
+        angle -= dt * _config.discAngularVelocity;
 
         if (angle < 0) {
           angle = 0;
           _debounce = false;
+        }
+        if (0 < _pulsesCount
+            && angle < _config.digitSegmentArc) {
+          dispatchPulsesCount();
+          _pulsesCount = 0;
         }
         postInvalidate();
       }
@@ -173,7 +200,6 @@ public final class DiscDialer extends View {
 
     private double _phi0, _phi1;
     private float _radiusOuter, _radiusInner;
-    private float _gripMult;
 
     void setPivot(float cx, float cy, float radius) {
       _pivot.set(cx, cy);
@@ -183,14 +209,31 @@ public final class DiscDialer extends View {
       _radiusInner *= _radiusInner;
     }
 
+    private float _gripMult;
+    private float _maxAngle;
+
+    float getMaxAngle(double phi0) {
+      phi0 = RADIAN_INV * (2*Math.PI - phi0);
+      if (phi0 > _config.cockAngleThreshold) {
+        float theta = _config.cockAngleThreshold;
+        for (int i = 1; i <= 10; ++i) {
+          if (phi0 < theta + _config.digitSegmentArc) return theta;
+
+          theta += _config.digitSegmentArc;
+        }
+      }
+      return 360;
+    }
+
     boolean onTouchEvent(MotionEvent event) {
       final int action = event.getAction();
       switch (action) {
         case MotionEvent.ACTION_DOWN:
           _debounce = false;
           _touch.set(event.getX(), event.getY());
-          _phi0 = azimuth(_pivot, _touch.x, _touch.y) - _config.pinTilt;
+          _phi0 = azimuth(_pivot, _touch.x, _touch.y) - _config.knobAzimuth;
           _phi1 = _phi0;
+          _maxAngle = getMaxAngle(_phi0);
           float r = getSquareDistance(_pivot, _touch.x, _touch.y);
           _gripMult = r < _radiusInner ?
               _config.innerDeadZoneGripMult * r / _radiusInner : 1.f;
@@ -210,10 +253,22 @@ public final class DiscDialer extends View {
           _phi1 = phi;
 
           if (alpha != 0) {
+            float angle_old = angle;
             angle += RADIAN_INV * alpha;
             if (angle < 0) angle = 0;
-            if (angle > 360) angle = 360;
-            invalidate();
+            if (angle > _maxAngle) angle = _maxAngle;
+
+            if (alpha > 0) {
+              _pulsesCount = Math.round((angle - _config.cockAngleThreshold) / _config.digitSegmentArc);
+              if (_pulsesCount > 10) _pulsesCount = 10;
+            }
+            if (angle != angle_old)
+              invalidate();
+          }
+          if (0 < _pulsesCount
+              && angle < _config.digitSegmentArc) {
+            dispatchPulsesCount();
+            _pulsesCount = 0;
           }
           break;
 
