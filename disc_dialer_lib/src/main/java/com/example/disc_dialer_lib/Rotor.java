@@ -49,22 +49,19 @@ final class Rotor {
     return x * x + y * y;
   }
 
+
   private static final double RADIAN = Math.PI / 180;
   private static final double RADIAN_INV = 180 / Math.PI;
-
-  private static class DialerConfig {
-    double discAngularVelocity = 40. / 1000; // degrees per millisecond
-    double knobAzimuth = 25 * RADIAN; // radians
-    float outerDeadZoneCoeff = 1.f;
-    float innerDeadZoneCoeff = .58103f;
-    float innerDeadZoneGripMult = .16f;
-    float cockAngleThreshold = 52f; // degrees;
-    float digitSegmentArc = 28f; // degrees
-  }
-
-  private DialerConfig _config = new DialerConfig();
+  private static final double TIME_UNIT = 1000;
 
   float angle;
+
+  private RotorConfig _config = RotorConfig.makeDefault();
+
+  @NonNull
+  public RotorConfig config() {
+    return _config;
+  }
 
   private boolean _debounce;
   private long _t0;
@@ -72,7 +69,7 @@ final class Rotor {
   public void doAnimationTick() {
     if (_debounce) {
       long dt = getAnimationTime() - _t0;
-      angle -= dt * _config.discAngularVelocity;
+      angle -= dt * _config.angularVelocity/TIME_UNIT;
 
       if (angle < 0) {
         angle = 0;
@@ -98,7 +95,7 @@ final class Rotor {
       case MotionEvent.ACTION_DOWN:
         _debounce = false;
         _touch.set(event.getX(), event.getY());
-        _phi0 = azimuth(_pivot, _touch.x, _touch.y) - _config.knobAzimuth;
+        _phi0 = azimuth(_pivot, _touch.x, _touch.y) - _config.fingerStopAzimuth*RADIAN;
         _phi1 = _phi0;
         _maxAngle = getMaxAngle(_phi0);
         float r = getSquareDistance(_pivot, _touch.x, _touch.y);

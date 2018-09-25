@@ -2,12 +2,15 @@ package com.example.disc_dialer_lib;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.RectF;
 import android.os.Build;
+import android.support.annotation.AttrRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
+import android.support.annotation.StyleRes;
 import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -31,29 +34,27 @@ public final class DiscDialer extends View implements Rotor.PulseInputReceiver {
     void setClipRect(RectF clipRect);
   }
 
-
   public DiscDialer(Context context) {
     super(context);
-    init(context, null, 0,0);
+    init(context, null, 0, R.style.DiscDialer);
   }
 
   public DiscDialer(Context context, @Nullable AttributeSet attrs) {
     super(context, attrs);
-    init(context, attrs, 0,0);
+    init(context, attrs, 0, R.style.DiscDialer);
   }
 
-  public DiscDialer(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+  public DiscDialer(Context context, @Nullable AttributeSet attrs, @AttrRes int defStyleAttr) {
     super(context, attrs, defStyleAttr);
-    init(context, attrs, defStyleAttr, 0);
+    init(context, attrs, defStyleAttr, R.style.DiscDialer);
   }
 
   @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-  public DiscDialer(Context context, @Nullable AttributeSet attrs, int defStyleAttr,
-      int defStyleRes) {
+  public DiscDialer(Context context, @Nullable AttributeSet attrs, @AttrRes int defStyleAttr,
+      @StyleRes int defStyleRes) {
     super(context, attrs, defStyleAttr, defStyleRes);
     init(context, attrs, defStyleAttr, defStyleRes);
   }
-
 
   private final Collection<InputListener> _listeners = new ArrayList<>();
 
@@ -66,11 +67,10 @@ public final class DiscDialer extends View implements Rotor.PulseInputReceiver {
   }
 
   public void receivePulseInput(int digit) {
-    for (InputListener l: _listeners) {
+    for (InputListener l : _listeners) {
       l.onDigitInput(this, digit);
     }
   }
-
 
   private Renderer _renderer;
 
@@ -81,12 +81,26 @@ public final class DiscDialer extends View implements Rotor.PulseInputReceiver {
 
   private final Rotor _rotor = new Rotor(this, this);
 
+  @NonNull public RotorConfig getRotorConfig() {
+    return new RotorConfig(_rotor.config());
+  }
+
+  public void setRotorConfig(@NonNull RotorConfig config) {
+    _rotor.config().set(config);
+  }
+
   private void init(Context context, @Nullable AttributeSet attrs, int defStyleAttr,
       int defStyleRes) {
-    _renderer = new DrawableRenderer(
-        ContextCompat.getDrawable(context, R.drawable.disc_dialer_bg),
-        ContextCompat.getDrawable(context, R.drawable.disc_dialer_disc),
-        ContextCompat.getDrawable(context, R.drawable.disc_dialer_fg));
+    TypedArray a =
+        context.obtainStyledAttributes(attrs, R.styleable.DiscDialer, defStyleAttr, defStyleRes);
+    {
+      DiscDialer_ConfigReader configReader = new DiscDialer_ConfigReader(context,
+          a.getResourceId(R.styleable.DiscDialer_dialer_config, R.xml.dialer_default));
+
+      _renderer = configReader.getRenderer();
+      _rotor.config().set(configReader.config);
+    }
+    a.recycle();
   }
 
   private final RectF _clipRect = new RectF();
@@ -117,8 +131,8 @@ public final class DiscDialer extends View implements Rotor.PulseInputReceiver {
   @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     super.onLayout(changed, left, top, right, bottom);
 
-    int w = right-left, h = bottom-top;
-    float cx = .5f*w, cy = .5f*h, r = Math.min(cx, cy);
+    int w = right - left, h = bottom - top;
+    float cx = .5f * w, cy = .5f * h, r = Math.min(cx, cy);
 
     _clipRect.set(cx - r, cy - r, cx + r, cy + r);
     _renderer.setClipRect(_clipRect);

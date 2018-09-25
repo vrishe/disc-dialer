@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <style name="DiscDialer">
+    <item name="android:background">@null</item>
+    <item name="dialer_config">@xml/dialer_default</item>
+  </style>
+</resources>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dialer>
+  <rotor
+      angularVelocity="40"
+      cockAngleThreshold="52"
+      digitSegmentArc="28"
+      fingerStopAzimuth="25">
+    <dead_zone
+        outer="1"
+        inner=".58103"
+        inner_grip=".16"/>
+  </rotor>
+  <renderer
+      name="com.example.disc_dialer_lib.DrawableRenderer"
+      background="@drawable/disc_dialer_bg"
+      foreground="@drawable/disc_dialer_fg"
+      disc="@drawable/disc_dialer_disc"/>
+</dialer>

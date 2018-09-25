@@ -4,6 +4,7 @@ import android.graphics.Canvas;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 public final class DrawableRenderer implements DiscDialer.Renderer {
 
@@ -11,15 +12,16 @@ public final class DrawableRenderer implements DiscDialer.Renderer {
   private final Drawable _discDrawable;
   private final Drawable _foregroundDrawable;
 
-  public DrawableRenderer(@NonNull Drawable backgroundDrawable, @NonNull Drawable discDrawable,
-      @NonNull Drawable foregroundDrawable) {
+  public DrawableRenderer(@NonNull Drawable discDrawable, @Nullable Drawable backgroundDrawable,
+      @Nullable Drawable foregroundDrawable) {
     _backgroundDrawable = backgroundDrawable;
     _discDrawable = discDrawable;
     _foregroundDrawable = foregroundDrawable;
   }
 
   @Override public void drawBackground(Canvas c, RectF bounds) {
-    _backgroundDrawable.draw(c);
+    if (_backgroundDrawable != null)
+      _backgroundDrawable.draw(c);
   }
 
   @Override public void drawDisc(Canvas c, RectF bounds) {
@@ -27,7 +29,8 @@ public final class DrawableRenderer implements DiscDialer.Renderer {
   }
 
   @Override public void drawForeground(Canvas c, RectF bounds) {
-    _foregroundDrawable.draw(c);
+    if (_foregroundDrawable != null)
+      _foregroundDrawable.draw(c);
   }
 
   @Override public void setClipRect(RectF clipRect) {
