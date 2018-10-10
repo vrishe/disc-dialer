@@ -2,7 +2,7 @@ package com.example.disc_dialer_lib;
 
 import android.support.annotation.NonNull;
 
-public final class RotorConfig {
+@SuppressWarnings("WeakerAccess") public final class RotorConfig {
 
   public static final double ANGULAR_VELOCITY_DEFAULT = 40. / 1000;
   public static final double ANGULAR_VELOCITY_MIN = 1;

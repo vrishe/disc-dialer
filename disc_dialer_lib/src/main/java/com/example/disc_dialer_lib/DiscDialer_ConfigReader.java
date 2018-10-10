@@ -5,7 +5,6 @@ import android.content.res.XmlResourceParser;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
-import android.util.TypedValue;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -16,9 +15,9 @@ import org.xmlpull.v1.XmlPullParserException;
 
 final class DiscDialer_ConfigReader {
 
-  public final RotorConfig config = RotorConfig.makeDefault();
+  final RotorConfig config = RotorConfig.makeDefault();
 
-  public DiscDialer_ConfigReader(Context context, int xmlResId) {
+  DiscDialer_ConfigReader(Context context, int xmlResId) {
     XmlResourceParser parser = context.getResources().getXml(xmlResId);
     {
       try {
@@ -46,7 +45,7 @@ final class DiscDialer_ConfigReader {
 
   private DiscDialer.Renderer _renderer;
 
-  @NonNull public DiscDialer.Renderer getRenderer() {
+  @NonNull DiscDialer.Renderer getRenderer() {
     if (_renderer == null) {
       throw new RuntimeException(
           "Couldn't initialize renderer as it's config declaration is missing.");

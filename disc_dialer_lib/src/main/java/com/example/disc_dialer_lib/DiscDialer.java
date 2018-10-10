@@ -11,14 +11,13 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.annotation.StyleRes;
-import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public final class DiscDialer extends View implements Rotor.PulseInputReceiver {
+@SuppressWarnings("unused") public final class DiscDialer extends View implements Rotor.PulseInputReceiver {
 
   public interface InputListener {
     void onDigitInput(DiscDialer dialer, int digit);
